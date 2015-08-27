@@ -1,2 +1,14 @@
+autom4te.cache/
+aclocal.m4
 httpd
 src/httpd
+config.h*
+config.log
+config.status
+configure
+src/*.o
+src/.deps
+src/.dirstamp
+stamp-h1
+Makefile
+Makefile.in
