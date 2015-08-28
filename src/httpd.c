@@ -34,7 +34,7 @@ void s_content(int fd, char *msg)
 		fprintf(stderr, "borked building the headers\n");
 
 	strcat(s_msg, msg);
-	fprintf(stderr, "the send msg(%d) is:\n'%s'", (int) strlen(s_msg), s_msg);
+	fprintf(stderr, "the send msg(%d) is:\n'%s'\n", (int) strlen(s_msg), s_msg);
 	int rc_s = write(fd, s_msg, strlen(s_msg));
 	if (rc_s != strlen(s_msg))
 		fprintf(stderr, "there was an issue sending the content\n");
