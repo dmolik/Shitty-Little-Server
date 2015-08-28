@@ -8,3 +8,6 @@ core_src += src/httpd.c
 
 httpd_SOURCES = $(core_src)
 bin_PROGRAMS = httpd
+
+clean-local:
+	git clean -xfd
