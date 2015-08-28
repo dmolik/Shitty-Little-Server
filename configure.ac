@@ -8,9 +8,7 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
 
 AC_PROG_CC
 AC_PROG_INSTALL
-AM_PROG_AR
 
-LT_INIT
 
 AC_C_INLINE
 
