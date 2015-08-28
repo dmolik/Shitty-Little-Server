@@ -40,7 +40,7 @@ void s_content(int fd, char *msg)
 		fprintf(stderr, "there was an issue sending the content\n");
 }
 
-int peer_helper(int fd)
+int peer_helper(int fd, long tid)
 {
 	char buffer[MAXMSG];
 	bzero(buffer, MAXMSG);
@@ -56,7 +56,7 @@ int peer_helper(int fd)
 		return -1;
 	} else {
 		/* Data read. */
-		fprintf (stderr, "Server: got message: `%s'\n", buffer);
+		fprintf (stderr, "Thread(%ld): got message: `%s'\n", tid, buffer);
 		s_content(fd, "<!DOCTYPE html>"
 			"<html lang=\"en\">"
 			"<head>"
@@ -71,8 +71,10 @@ int peer_helper(int fd)
 	}
 }
 
-int main(void)
+void *socket_handler(void *thread_id)
 {
+	long tid;
+	tid = (long) thread_id;
 	struct sockaddr_in serv_addr, peer_addr;
 
 	socklen_t peer_addr_size = sizeof(struct sockaddr_in);
@@ -127,12 +129,46 @@ int main(void)
 					exit(EXIT_FAILURE);
 				}
 			} else {
-				if (!peer_helper(events[n].data.fd))
+				if (!peer_helper(events[n].data.fd, tid))
 					close(events[n].data.fd);
 			}
 		}
 	}
 
 	close(serv_fd);
+
 	return 0;
+}
+
+int main(void)
+{
+	int num_threads = (int) sysconf(_SC_NPROCESSORS_ONLN);
+	pthread_t threads[num_threads];
+	int rc;
+	long t;
+
+	struct sockaddr_in serv_addr;
+
+	memset(&serv_addr, 0, sizeof(struct sockaddr_in));
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port   = htons(PORT);
+	inet_aton("0.0.0.0", &serv_addr.sin_addr);
+
+	int serv_fd = socket(AF_INET, SOCK_STREAM, 0);
+	int optval = 1;
+	setsockopt(serv_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+	bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof(struct sockaddr_in));
+	listen(serv_fd, SOMAXCONN);
+
+	for(t=0; t < num_threads; t++){
+		rc = pthread_create(&threads[t], NULL, socket_handler, (void *)t);
+		if (rc) {
+			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
+			exit(-1);
+		}
+	}
+
+	/* Last thing that main() should do */
+	pthread_exit(NULL);
+	return rc;
 }

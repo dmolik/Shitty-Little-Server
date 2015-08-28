@@ -13,6 +13,7 @@
 
 #include <sys/epoll.h>
 
+#include <pthread.h>
 
 #define PORT   3000
 #define MAXMSG  512
@@ -23,4 +24,4 @@ const char * time_s(void);
 
 void s_content(int fd, char *msg);
 
-int peer_helper(int fd);
+int peer_helper(int fd, long tid);

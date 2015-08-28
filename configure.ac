@@ -7,10 +7,11 @@ AC_CONFIG_MACRO_DIR([build])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
 
 AC_PROG_CC
-AC_PROG_INSTALL
 
+AC_HAVE_LIBRARY(pthread,,  AC_MSG_ERROR(Missing pthread library))
 
 AC_C_INLINE
+AC_PROG_INSTALL
 
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile])
