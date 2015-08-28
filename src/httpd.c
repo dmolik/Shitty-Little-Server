@@ -118,7 +118,7 @@ int main(void)
 					exit(EXIT_FAILURE);
 				}
 				int fl = fcntl(peer_fd, F_GETFL);
-				fcntl(peer_fd, F_SETFL, fl|O_NONBLOCK);
+				fcntl(peer_fd, F_SETFL, fl|O_NONBLOCK|O_ASYNC);
 
 				ev.events = EPOLLIN | EPOLLET;
 				ev.data.fd = peer_fd;
