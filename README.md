@@ -1,6 +1,7 @@
 A Shitty Little Webserver
 =========================
 
-It's so shitty
+Things to like about SLW:
 
-1) Hello World
+1) It's so shitty
+2) Hello World
