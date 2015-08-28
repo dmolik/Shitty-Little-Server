@@ -2,7 +2,7 @@
 
 const char * time_s(void)
 {
-	const char rs[200];
+	static char rs_t[200];
 	time_t t;
 	struct tm *tmp;
 
@@ -13,33 +13,28 @@ const char * time_s(void)
 		exit(EXIT_FAILURE);
 	}
 
-	if (strftime(rs, sizeof(rs), "%a, %d %b %Y %T GMT", tmp) == 0)
+	if (strftime(rs_t, sizeof(rs_t), "%a, %d %b %Y %T GMT", tmp) == 0)
 		fprintf(stderr, "strftime returned 0\n");
-	else
-		fprintf(stderr, "strftime returned %s\n", rs);
-	return rs;
+
+	return rs_t;
 }
 
 void s_content(int fd, char *msg)
 {
 	char s_msg[MAXMSG];
 
-	char t_stamp[200];
-	time_t t;
-	struct tm *tmp;
+	if(sprintf(s_msg,
+			"HTTP/1.1 200 OK\r\n"
+			"Connection: Close\r\n"
+			"Server: %s\r\n"
+			"Content-Type: text/html; charset=utf-8\r\n"
+			"Date: %s\r\n"
+			"Content-Length: %d\r\n\r\n",
+				SERVER_NAME, time_s(), (int) strlen(msg)) == -1)
+		fprintf(stderr, "borked building the headers\n");
 
-	t = time(NULL);
-	tmp = gmtime(&t);
-	if (tmp == NULL) {
-		perror("gmtime");
-		exit(EXIT_FAILURE);
-	}
-	if (strftime(t_stamp, sizeof(t_stamp), "%a, %d %b %Y %T GMT", tmp) == 0)
-		fprintf(stderr, "strftime returned 0\n");
-
-	int s = sprintf(s_msg, "HTTP/1.1 200 OK\r\nConnection: Close\r\nServer: %s\r\nContent-Type: text/html; charset=utf-8\r\nDate: %s\r\nContent-Length: %d\r\n\r\n", SERVER_NAME, t_stamp, (int) strlen(msg));
 	strcat(s_msg, msg);
-	fprintf(stderr, "the send msg(%d) is: '%s'", (int) strlen(s_msg), s_msg);
+	fprintf(stderr, "the send msg(%d) is:\n'%s'", (int) strlen(s_msg), s_msg);
 	int rc_s = write(fd, s_msg, strlen(s_msg));
 	if (rc_s != strlen(s_msg))
 		fprintf(stderr, "there was an issue sending the content\n");
