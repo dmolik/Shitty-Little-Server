@@ -20,10 +20,12 @@
 
 #define SERVER_NAME "shitty little server"
 
-struct thread_data {
-	long thread_id;
+struct t_data {
 	int  serv_fd;
+	struct sockaddr_in serv_addr;
 };
+
+typedef struct t_data cfg_t;
 
 const char * time_s(void);
 

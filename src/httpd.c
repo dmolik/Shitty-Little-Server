@@ -1,5 +1,7 @@
 #include "httpd.h"
 
+cfg_t httpd_t;
+
 const char * time_s(void)
 {
 	static char rs_t[200];
@@ -71,7 +73,7 @@ int peer_helper(int fd, long tid)
 	}
 }
 
-int build_socket()
+void build_socket(void)
 {
 	struct sockaddr_in serv_addr;
 
@@ -85,23 +87,23 @@ int build_socket()
 	int optval = 1;
 	setsockopt(serv_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
 	setsockopt(serv_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-	bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof(struct sockaddr_in));
+	// bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof(struct sockaddr_in));
+	httpd_t.serv_fd   = serv_fd;
+	httpd_t.serv_addr = serv_addr;
 
-	return serv_fd;
+	//return serv_fd;
 }
 
 void *socket_handler(void *t_data)
 {
-	struct thread_data *t;
-	t = (struct thread_data *) t_data;
-	long tid     = t->thread_id;
-	int  serv_fd = t->serv_fd;
+	long tid = (long) t_data;
 	struct sockaddr_in peer_addr;
 
 	socklen_t peer_addr_size = sizeof(struct sockaddr_in);
 
 	// int serv_fd = build_socket();
-	listen(serv_fd, SOMAXCONN);
+	bind(httpd_t.serv_fd, (struct sockaddr *) &httpd_t.serv_addr, sizeof(struct sockaddr_in));
+	listen(httpd_t.serv_fd, SOMAXCONN);
 
 	struct epoll_event ev, events[SOMAXCONN];
 	int nfds, epollfd, n, peer_fd;
@@ -113,8 +115,8 @@ void *socket_handler(void *t_data)
 	}
 
 	ev.events = EPOLLIN;
-	ev.data.fd = serv_fd;
-	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serv_fd, &ev) == -1) {
+	ev.data.fd = httpd_t.serv_fd;
+	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, httpd_t.serv_fd, &ev) == -1) {
 		perror("epoll_ctl: listen_sock");
 		exit(EXIT_FAILURE);
 	}
@@ -126,8 +128,8 @@ void *socket_handler(void *t_data)
 		}
 
 		for (n = 0; n < nfds; ++n) {
-			if (events[n].data.fd == serv_fd) {
-				peer_fd = accept(serv_fd, (struct sockaddr *) &peer_addr, &peer_addr_size);
+			if (events[n].data.fd == httpd_t.serv_fd) {
+				peer_fd = accept(httpd_t.serv_fd, (struct sockaddr *) &peer_addr, &peer_addr_size);
 				if (peer_fd == -1) {
 					perror("accept");
 					exit(EXIT_FAILURE);
@@ -148,7 +150,7 @@ void *socket_handler(void *t_data)
 		}
 	}
 
-	close(serv_fd);
+	close(httpd_t.serv_fd);
 
 	return 0;
 }
@@ -159,21 +161,19 @@ int main(void)
 	pthread_t threads[num_threads];
 	int rc;
 	long t;
-	int serv_fd = build_socket();
-	struct thread_data t_data;
-
-	t_data.thread_id = 0;
-	t_data.serv_fd   = serv_fd;
+	//httpd_t = malloc(sizeof(struct t_data));
+	build_socket();
 
 	for(t=0; t < num_threads; t++) {
-		t_data.thread_id = t;
-		rc = pthread_create(&threads[t], NULL, socket_handler, (void *) &t_data);
+		rc = pthread_create(&threads[t], NULL, socket_handler, (void *)t);
 		if (rc) {
 			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
 			exit(-1);
 		}
 	}
-
+	while (1) {
+		sleep(10);
+	}
 	/* Last thing that main() should do */
 	pthread_exit(NULL);
 	return rc;
