@@ -20,6 +20,11 @@
 
 #define SERVER_NAME "shitty little server"
 
+struct thread_data {
+	long thread_id;
+	int  serv_fd;
+};
+
 const char * time_s(void);
 
 void s_content(int fd, char *msg);

@@ -71,23 +71,36 @@ int peer_helper(int fd, long tid)
 	}
 }
 
-void *socket_handler(void *thread_id)
+int build_socket()
 {
-	long tid;
-	tid = (long) thread_id;
-	struct sockaddr_in serv_addr, peer_addr;
-
-	socklen_t peer_addr_size = sizeof(struct sockaddr_in);
+	struct sockaddr_in serv_addr;
 
 	memset(&serv_addr, 0, sizeof(struct sockaddr_in));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port   = htons(PORT);
-	inet_aton("0.0.0.0", &serv_addr.sin_addr);
+	serv_addr.sin_family      = AF_INET;
+	serv_addr.sin_port        = htons(PORT);
+	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	//inet_aton("0.0.0.0", &serv_addr.sin_addr);
 
 	int serv_fd = socket(AF_INET, SOCK_STREAM, 0);
 	int optval = 1;
 	setsockopt(serv_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+	setsockopt(serv_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 	bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof(struct sockaddr_in));
+
+	return serv_fd;
+}
+
+void *socket_handler(void *t_data)
+{
+	struct thread_data *t;
+	t = (struct thread_data *) t_data;
+	long tid     = t->thread_id;
+	int  serv_fd = t->serv_fd;
+	struct sockaddr_in peer_addr;
+
+	socklen_t peer_addr_size = sizeof(struct sockaddr_in);
+
+	// int serv_fd = build_socket();
 	listen(serv_fd, SOMAXCONN);
 
 	struct epoll_event ev, events[SOMAXCONN];
@@ -146,22 +159,15 @@ int main(void)
 	pthread_t threads[num_threads];
 	int rc;
 	long t;
+	int serv_fd = build_socket();
+	struct thread_data t_data;
 
-	struct sockaddr_in serv_addr;
+	t_data.thread_id = 0;
+	t_data.serv_fd   = serv_fd;
 
-	memset(&serv_addr, 0, sizeof(struct sockaddr_in));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_port   = htons(PORT);
-	inet_aton("0.0.0.0", &serv_addr.sin_addr);
-
-	int serv_fd = socket(AF_INET, SOCK_STREAM, 0);
-	int optval = 1;
-	setsockopt(serv_fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
-	bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof(struct sockaddr_in));
-	listen(serv_fd, SOMAXCONN);
-
-	for(t=0; t < num_threads; t++){
-		rc = pthread_create(&threads[t], NULL, socket_handler, (void *)t);
+	for(t=0; t < num_threads; t++) {
+		t_data.thread_id = t;
+		rc = pthread_create(&threads[t], NULL, socket_handler, (void *) &t_data);
 		if (rc) {
 			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
 			exit(-1);
