@@ -14,3 +14,4 @@ TODO
 3. Daemonization
 4. Config file
 5. Getopts
+6. Better caching and keep-alive
