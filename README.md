@@ -26,8 +26,9 @@
 ## TODO
 
 1. Better error handling (logging and errno)
-2. Logging
+2. Logging (http requests)
 3. Daemonization
 4. Config file
 5. Getopts
 6. Better caching and keep-alive
+7. Metrics framework and endpoint
