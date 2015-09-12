@@ -1,6 +1,6 @@
 AC_INIT([httpd], [0.0.1], [bugs@danmolik.com])
 AC_PREREQ(2.68)
-AC_CONFIG_SRCDIR([src/httpd.h])
+AC_CONFIG_SRCDIR([src/server.h])
 AC_CONFIG_AUX_DIR([build])
 AC_CONFIG_MACRO_DIR([build])
 

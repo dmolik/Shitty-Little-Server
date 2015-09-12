@@ -1,4 +1,24 @@
-#include "httpd.h"
+/*
+ * Copyright 2015 Dan Molik <dan@danmolik.com>
+ *
+ * This file is part of Shitty Little Server
+ *
+ * Shitty Little Server is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+
+ * Shitty Little Server is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ *along with Shitty Little Server.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
+#include "server.h"
 
 
 const char * time_s(void)
@@ -15,7 +35,7 @@ const char * time_s(void)
 	}
 
 	if (strftime(rs_t, sizeof(rs_t), "%a, %d %b %Y %T GMT", tmp) == 0)
-		fprintf(stderr, "strftime returned 0\n");
+		logger(LOG_ERR, "unable to format time, %s", strerror(errno));
 
 	return rs_t;
 }
@@ -32,13 +52,13 @@ void s_content(int fd, char *msg)
 			"Date: %s\r\n"
 			"Content-Length: %d\r\n\r\n",
 				SERVER_NAME, time_s(), (int) strlen(msg)) == -1)
-		fprintf(stderr, "borked building the headers\n");
+		logger(LOG_ERR, "unable to build headers, %s", strerror(errno));
 
 	strcat(s_msg, msg);
-	fprintf(stderr, "the send msg(%d) is:\n'%s'\n", (int) strlen(s_msg), s_msg);
+	/* TODO use send instead of write */
 	int rc_s = write(fd, s_msg, strlen(s_msg));
 	if (rc_s != strlen(s_msg))
-		fprintf(stderr, "there was an issue sending the content\n");
+		logger(LOG_ERR, "failed to send msg, %s", strerror(errno));
 }
 
 int peer_helper(int fd, long tid)
@@ -46,7 +66,7 @@ int peer_helper(int fd, long tid)
 	char buffer[MAXMSG];
 	bzero(buffer, MAXMSG);
 	int nbytes;
-
+	/* TODO use recv here instead */
 	nbytes = read(fd, buffer, MAXMSG);
 	if (nbytes < 0) {
 		/* Read error. */
@@ -57,7 +77,7 @@ int peer_helper(int fd, long tid)
 		return -1;
 	} else {
 		/* Data read. */
-		fprintf (stderr, "Thread(%ld): got message: `%s'\n", tid, buffer);
+		// fprintf (stderr, "Thread(%ld): got message: `%s'\n", tid, buffer);
 		s_content(fd, "<!DOCTYPE html>"
 			"<html lang=\"en\">"
 			"<head>"
@@ -72,8 +92,12 @@ int peer_helper(int fd, long tid)
 	}
 }
 
-int build_socket(void)
+void *t_worker(void *t_data)
 {
+	long tid = (long) t_data;
+	struct sockaddr_in peer_addr;
+	socklen_t peer_addr_size = sizeof(struct sockaddr_in);
+
 	struct sockaddr_in serv_addr;
 
 	memset(&serv_addr, 0, sizeof(struct sockaddr_in));
@@ -87,17 +111,6 @@ int build_socket(void)
 	setsockopt(serv_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 	bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof(struct sockaddr_in));
 	listen(serv_fd, SOMAXCONN);
-
-	return serv_fd;
-}
-
-void *socket_handler(void *t_data)
-{
-	long tid = (long) t_data;
-	struct sockaddr_in peer_addr;
-	socklen_t peer_addr_size = sizeof(struct sockaddr_in);
-
-	int serv_fd = build_socket();
 
 	struct epoll_event ev, events[SOMAXCONN];
 	int nfds, epollfd, n, peer_fd;
@@ -122,30 +135,38 @@ void *socket_handler(void *t_data)
 		}
 
 		for (n = 0; n < nfds; ++n) {
-			if (events[n].data.fd == serv_fd) {
-				peer_fd = accept(serv_fd, (struct sockaddr *) &peer_addr, &peer_addr_size);
-				if (peer_fd == -1) {
-					perror("accept");
-					exit(EXIT_FAILURE);
-				}
-				int fl = fcntl(peer_fd, F_GETFL);
-				fcntl(peer_fd, F_SETFL, fl|O_NONBLOCK|O_ASYNC);
+			if(events[n].events & EPOLLIN) {
+				if (events[n].data.fd == serv_fd) {
+					peer_fd = accept(serv_fd, (struct sockaddr *) &peer_addr, &peer_addr_size);
+					if (peer_fd == -1) {
+						perror("accept");
+						exit(EXIT_FAILURE);
+					}
+					int fl = fcntl(peer_fd, F_GETFL);
+					fcntl(peer_fd, F_SETFL, fl|O_NONBLOCK|O_ASYNC);
 
-				ev.events = EPOLLIN | EPOLLET;
-				ev.data.fd = peer_fd;
-				if (epoll_ctl(epollfd, EPOLL_CTL_ADD, peer_fd, &ev) == -1) {
-					perror("epoll_ctl: peer_fd");
-					exit(EXIT_FAILURE);
+					ev.events = EPOLLIN | EPOLLET;
+					ev.data.fd = peer_fd;
+					if (epoll_ctl(epollfd, EPOLL_CTL_ADD, peer_fd, &ev) == -1) {
+						perror("epoll_ctl: peer_fd");
+						exit(EXIT_FAILURE);
+					}
+				} else {
+					if (!peer_helper(events[n].data.fd, tid))
+						close(events[n].data.fd);
 				}
-			} else {
-				if (!peer_helper(events[n].data.fd, tid))
-					close(events[n].data.fd);
 			}
 		}
 	}
 
 	close(serv_fd);
 
+	return 0;
+}
+
+int term_handler(void)
+{
+	log_close();
 	return 0;
 }
 
@@ -156,17 +177,22 @@ int main(void)
 	int rc;
 	long t;
 
+	log_open("shittyd", "daemon");
+	log_level(0, "info");
+	logger(LOG_INFO, "starting shitty little server with %d threads", num_threads);
+
 	for(t=0; t < num_threads; t++) {
-		rc = pthread_create(&threads[t], NULL, socket_handler, (void *)t);
+		rc = pthread_create(&threads[t], NULL, t_worker, (void *)t);
 		if (rc) {
-			fprintf(stderr, "ERROR; return code from pthread_create() is %d\n", rc);
+			logger(LOG_ERR, "failed to create thread %s", strerror(errno));
 			exit(-1);
 		}
 	}
 	while (1) {
 		sleep(10);
 	}
-	/* Last thing that main() should do */
+
+	term_handler();
 	pthread_exit(NULL);
 	return rc;
 }
