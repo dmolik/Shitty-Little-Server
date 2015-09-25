@@ -29,10 +29,8 @@ const char * time_s(void)
 
 	t = time(NULL);
 	tmp = gmtime(&t);
-	if (tmp == NULL) {
-		perror("gmtime");
-		exit(EXIT_FAILURE);
-	}
+	if (tmp == NULL)
+		logger(LOG_ERR, "failed to allocate gmtime: %s", strerror(errno));
 
 	if (strftime(rs_t, sizeof(rs_t), "%a, %d %b %Y %T GMT", tmp) == 0)
 		logger(LOG_ERR, "unable to format time, %s", strerror(errno));
@@ -55,8 +53,7 @@ void s_content(int fd, char *msg)
 		logger(LOG_ERR, "unable to build headers, %s", strerror(errno));
 
 	strcat(s_msg, msg);
-	/* TODO use send instead of write */
-	int rc_s = write(fd, s_msg, strlen(s_msg));
+	int rc_s = send(fd, s_msg, strlen(s_msg), 0);
 	if (rc_s != strlen(s_msg))
 		logger(LOG_ERR, "failed to send msg, %s", strerror(errno));
 }
@@ -66,18 +63,15 @@ int peer_helper(int fd, long tid)
 	char buffer[MAXMSG];
 	bzero(buffer, MAXMSG);
 	int nbytes;
-	/* TODO use recv here instead */
-	nbytes = read(fd, buffer, MAXMSG);
+	nbytes = recv(fd, buffer, MAXMSG, 0);
 	if (nbytes < 0) {
-		/* Read error. */
-		perror ("read");
+		logger(LOG_ERR, "error reading socket: %s", strerror(errno));
 		exit (EXIT_FAILURE);
 	} else if (nbytes == 0) {
 		/* End-of-file. */
 		return -1;
 	} else {
 		/* Data read. */
-		// fprintf (stderr, "Thread(%ld): got message: `%s'\n", tid, buffer);
 		s_content(fd, "<!DOCTYPE html>"
 			"<html lang=\"en\">"
 			"<head>"
@@ -130,7 +124,7 @@ void *t_worker(void *t_data)
 	for (;;) {
 		nfds = epoll_wait(epollfd, events, SOMAXCONN, -1);
 		if (nfds == -1) {
-			perror("epoll_pwait");
+			logger(LOG_ERR, "catastrophic epoll_wait: %s", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -139,7 +133,7 @@ void *t_worker(void *t_data)
 				if (events[n].data.fd == serv_fd) {
 					peer_fd = accept(serv_fd, (struct sockaddr *) &peer_addr, &peer_addr_size);
 					if (peer_fd == -1) {
-						perror("accept");
+						logger(LOG_ERR, "cannot accept peers: %s", strerror(errno));
 						exit(EXIT_FAILURE);
 					}
 					int fl = fcntl(peer_fd, F_GETFL);
@@ -148,12 +142,14 @@ void *t_worker(void *t_data)
 					ev.events = EPOLLIN | EPOLLET;
 					ev.data.fd = peer_fd;
 					if (epoll_ctl(epollfd, EPOLL_CTL_ADD, peer_fd, &ev) == -1) {
-						perror("epoll_ctl: peer_fd");
+						logger(LOG_ERR, "epoll_ctl: peer_fd: %s", strerror(errno));
 						exit(EXIT_FAILURE);
 					}
 				} else {
 					if (!peer_helper(events[n].data.fd, tid))
 						close(events[n].data.fd);
+					// remove the fd from the loop
+					epoll_ctl(epollfd, EPOLL_CTL_DEL, events[n].data.fd, &ev);
 				}
 			}
 		}

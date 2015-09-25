@@ -7,6 +7,11 @@
 3. SO_REUSEPORT
 4. ASYNC Polling
 
+### Cons:
+
+1. I am not sane.
+2. It's not protable, sorry FreeBSD
+3. It's still in heavy development
 
 ## Installation
 
