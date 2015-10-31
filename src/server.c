@@ -111,14 +111,14 @@ void *t_worker(void *t_data)
 
 	epollfd = epoll_create1(0);
 	if (epollfd == -1) {
-		perror("epoll_create1");
+		logger(LOG_ERR, "failed to create epoll loop in thread");
 		exit(EXIT_FAILURE);
 	}
 
 	ev.events = EPOLLIN;
 	ev.data.fd = serv_fd;
 	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serv_fd, &ev) == -1) {
-		perror("epoll_ctl: listen_sock");
+		logger(LOG_ERR, "epoll_ctl: listen_sock");
 		exit(EXIT_FAILURE);
 	}
 	for (;;) {
@@ -160,10 +160,11 @@ void *t_worker(void *t_data)
 	return 0;
 }
 
-int term_handler(void)
+void term_handler(void)
 {
 	log_close();
-	return 0;
+	pthread_exit(NULL);
+	exit(EXIT_SUCCESS);
 }
 
 int main(void)
@@ -179,16 +180,67 @@ int main(void)
 
 	for(t=0; t < num_threads; t++) {
 		rc = pthread_create(&threads[t], NULL, t_worker, (void *)t);
-		if (rc) {
-			logger(LOG_ERR, "failed to create thread %s", strerror(errno));
-			exit(-1);
-		}
-	}
-	while (1) {
-		sleep(10);
+		if (rc)
+			_ERROR("failed to create worker thread");
 	}
 
-	term_handler();
-	pthread_exit(NULL);
+	// signal handling
+	sigset_t mask;
+	struct epoll_event ev, events[MAX_EVENTS];
+	int sfd, nfds, epollfd;
+
+	struct signalfd_siginfo fdsi;
+	ssize_t s;
+
+	int n = 0;
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGQUIT);
+	sigaddset(&mask, SIGHUP);
+
+	/* Block signals so that they aren't handled
+	 * according to their default dispositions */
+
+	if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
+		_ERROR("sigprocmask");
+
+	sfd = signalfd(-1, &mask, O_NONBLOCK);
+	if (sfd == -1)
+		_ERROR("signalfd");
+
+	epollfd = epoll_create1(0);
+	if (epollfd == -1)
+		_ERROR("epoll_create1");
+
+	ev.events = EPOLLIN | EPOLLET;
+	ev.data.fd = sfd;
+	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sfd, &ev) == -1)
+		_ERROR("epoll_ctl sfd");
+
+	for (;;) {
+		nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+		if (nfds == -1)
+			_ERROR("epoll_wait");
+
+		for (n = 0; n < nfds; ++n) {
+			if (events[n].data.fd == sfd) {
+				s = read(sfd, &fdsi, sizeof(struct signalfd_siginfo));
+				if (s != sizeof(struct signalfd_siginfo))
+					_ERROR("epoll read");
+				if (fdsi.ssi_signo == SIGINT) {
+					term_handler();
+				} else if (fdsi.ssi_signo == SIGHUP) {
+					printf("HUPPED\n");
+				} else if (fdsi.ssi_signo == SIGQUIT) {
+					printf("Got SIGQUIT\n");
+					term_handler();
+				} else {
+					printf("Read unexpected signal\n");
+				}
+			}
+		}
+	}
+
 	return rc;
 }

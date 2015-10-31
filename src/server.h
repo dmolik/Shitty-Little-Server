@@ -33,18 +33,26 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
+#include <signal.h>
+#include <sys/signalfd.h>
+
 #include <sys/epoll.h>
 
 #include <pthread.h>
 
 #include "logger.h"
-#include "http_parser.h"
 #include "../config.h"
 
-#define PORT   3000
-#define MAXMSG  512
+#define MAX_EVENTS 8192
+#define MAXMSG     1492
 
 #define SERVER_NAME "shitty little server"
+
+#define _ERROR(msg) \
+	do { logger(LOG_ERR, "%s, %s", msg, strerror(errno)); exit(EXIT_FAILURE); } while (0)
+
+#define PORT   3000
+
 
 const char * time_s(void);
 
