@@ -1,4 +1,4 @@
-AC_INIT([httpd], [0.0.1], [bugs@danmolik.com])
+AC_INIT([shittyd], [0.0.1], [bugs@danmolik.com])
 AC_PREREQ(2.68)
 AC_CONFIG_SRCDIR([src/server.h])
 AC_CONFIG_AUX_DIR([build])
