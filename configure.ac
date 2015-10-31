@@ -8,7 +8,9 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
 
 AC_PROG_CC
 
-AC_HAVE_LIBRARY(pthread,,  AC_MSG_ERROR(Missing pthread library))
+AC_HAVE_LIBRARY(pthread,,     AC_MSG_ERROR(Missing pthread library))
+AC_HAVE_LIBRARY(z,,           AC_MSG_ERROR(Missing zlib library))
+AC_HAVE_LIBRARY(http_parser,, AC_MSG_ERROR(Missing Joyent HTTP parser library))
 
 AC_C_INLINE
 AC_PROG_INSTALL
