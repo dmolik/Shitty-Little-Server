@@ -33,6 +33,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
+#include <getopt.h>
 #include <signal.h>
 #include <sys/signalfd.h>
 

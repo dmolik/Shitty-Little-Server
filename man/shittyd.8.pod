@@ -1,0 +1,52 @@
+=head1 NAME
+
+shittyd - The shitty webserver daemon
+
+=head1 SYNOPSIS
+
+B<shittyd> [options]
+
+B<shittyd> -c /path/to/shittyd.conf
+
+B<shittyd> -F
+
+=head1 DESCRIPTION
+
+=head1 OPTIONS
+
+=over
+
+=item B<-F>, B<--foreground>
+
+Run B<shittyd> in the console foreground and write all log messages to stderr and stdout.
+
+=item B<v>, B<--verbose>
+
+Increase the verbosity of log messages, this switch can be used multiple time.
+
+=item B<-c>, B<--config> I</path/to/config>
+
+The filepath to the B<shitty> configuration, if a CLI switch is given it will override an
+option that is also specified in the config.
+
+=item B<-p>, B<--pidfile> I</path/to/pidfile>
+
+The filepath to where to store the process ID of B<shittyd>.
+
+=item B<-u>, B<--user> I<username>
+
+=item B<-g>, B<--group> I<group name>
+
+The user and group to drop privileges to. By default B<shittyd> will run as
+root:root. Please be aware that if you want to run B<shittyd> on a port less than
+1024 you will need escalated privledges.
+
+=back
+
+=head1 SEE ALSO
+
+B<shittdy.conf>(5)
+
+=head1 AUTHOR
+
+shittyd was concieved and written by Dan Molik

@@ -14,7 +14,7 @@
  * GNU General Public License for more details.
 
  * You should have received a copy of the GNU General Public License
- *along with Shitty Little Server.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Shitty Little Server.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
@@ -62,8 +62,7 @@ int peer_helper(int fd, long tid)
 {
 	char buffer[MAXMSG];
 	bzero(buffer, MAXMSG);
-	int nbytes;
-	nbytes = recv(fd, buffer, MAXMSG, 0);
+	int nbytes = recv(fd, buffer, MAXMSG, 0);
 	if (nbytes < 0) {
 		logger(LOG_ERR, "error reading socket: %s", strerror(errno));
 		exit (EXIT_FAILURE);
@@ -156,14 +155,75 @@ void term_handler(void)
 	exit(EXIT_SUCCESS);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
-	int num_threads = (int) sysconf(_SC_NPROCESSORS_ONLN);
-	pthread_t threads[num_threads];
 	int rc;
 	long t;
 
-	log_open("shittyd", "daemon");
+	struct option long_opts[] = {
+		{ "help",             no_argument, NULL, 'h' },
+		{ "verbose",          no_argument, NULL, 'v' },
+		{ "foreground",       no_argument, NULL, 'F' },
+		{ "config",     required_argument, NULL, 'c' },
+		{ "pidfile",    required_argument, NULL, 'p' },
+		{ "user",       required_argument, NULL, 'u' },
+		{ "group",      required_argument, NULL, 'g' },
+		{ 0, 0, 0, 0 },
+	};
+	for (;;) {
+		int idx = 1;
+		int c = getopt_long(argc, argv, "h?v+Fc:p:u:g:", long_opts, &idx);
+		if (c == -1) break;
+
+		switch (c) {
+		case 'h':
+		case '?':
+			printf("%s v%s\n", argv[0], VERSION);
+			printf("Usage: %s [-h?Fv] [-c /path/to/config]\n"
+			       "          [-u user] [-g group] [-p /path/to/pidfile\n\n",
+			        argv[0]);
+
+			printf("Option:\n");
+			printf("  -?, -h, --help    show this help screen\n");
+			printf("  -F, --foreground  don't daemonize, stay in foreground\n");
+			printf("  -v, --verbose     increase debugging\n");
+
+			printf("  -c, --config      file path containing the config\n");
+
+			printf("  -p, --pidfile     where to store the pidfile\n");
+			printf("  -u, --user        the user to run as\n");
+			printf("  -g, --group       the group to run under\n");
+			exit(EXIT_SUCCESS);
+
+		case 'v':
+			// verbose++
+			break;
+
+		case 'F':
+			break;
+
+		case 'c':
+			break;
+
+		case 'p':
+			break;
+
+		case 'u':
+			break;
+
+		case 'g':
+			break;
+
+		default:
+			fprintf(stderr, "unhandled option flag %#02x\n", c);
+			return 1;
+		}
+	}
+
+	int num_threads = (int) sysconf(_SC_NPROCESSORS_ONLN);
+	pthread_t threads[num_threads];
+
+	log_open(argv[0], "daemon");
 	log_level(0, "info");
 	logger(LOG_INFO, "starting shitty little server with %d threads", num_threads);
 
