@@ -109,46 +109,36 @@ void *t_worker(void *t_data)
 	struct epoll_event ev, events[SOMAXCONN];
 	int nfds, epollfd, n, peer_fd;
 
-	epollfd = epoll_create1(0);
-	if (epollfd == -1) {
-		logger(LOG_ERR, "failed to create epoll loop in thread");
-		exit(EXIT_FAILURE);
-	}
+	if ((epollfd = epoll_create1(0)) == -1)
+		_ERROR("failed to create fd loop in worker");
 
 	ev.events = EPOLLIN;
 	ev.data.fd = serv_fd;
-	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serv_fd, &ev) == -1) {
-		logger(LOG_ERR, "epoll_ctl: listen_sock");
-		exit(EXIT_FAILURE);
-	}
+	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serv_fd, &ev) == -1)
+		_ERROR("failed to add listening socket to fd loop");
+
 	for (;;) {
-		nfds = epoll_wait(epollfd, events, SOMAXCONN, -1);
-		if (nfds == -1) {
-			logger(LOG_ERR, "catastrophic epoll_wait: %s", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
+		if ((nfds = epoll_wait(epollfd, events, SOMAXCONN, -1)) == -1)
+			_ERROR("catastropic epoll_wait");
 
 		for (n = 0; n < nfds; ++n) {
-			if(events[n].events & EPOLLIN) {
+			if (events[n].events & EPOLLIN) {
 				if (events[n].data.fd == serv_fd) {
-					peer_fd = accept(serv_fd, (struct sockaddr *) &peer_addr, &peer_addr_size);
-					if (peer_fd == -1) {
-						logger(LOG_ERR, "cannot accept peers: %s", strerror(errno));
-						exit(EXIT_FAILURE);
-					}
+					if ((peer_fd = accept(serv_fd, (struct sockaddr *) &peer_addr, &peer_addr_size)) == -1)
+						_ERROR("unable to accept connections");
+
 					int fl = fcntl(peer_fd, F_GETFL);
 					fcntl(peer_fd, F_SETFL, fl|O_NONBLOCK|O_ASYNC);
 
 					ev.events = EPOLLIN | EPOLLET;
 					ev.data.fd = peer_fd;
-					if (epoll_ctl(epollfd, EPOLL_CTL_ADD, peer_fd, &ev) == -1) {
-						logger(LOG_ERR, "epoll_ctl: peer_fd: %s", strerror(errno));
-						exit(EXIT_FAILURE);
-					}
+					if (epoll_ctl(epollfd, EPOLL_CTL_ADD, peer_fd, &ev) == -1)
+						_ERROR("epoll_ctl on peer_fd");
+
 				} else {
 					if (!peer_helper(events[n].data.fd, tid))
 						close(events[n].data.fd);
-					// remove the fd from the loop
+
 					epoll_ctl(epollfd, EPOLL_CTL_DEL, events[n].data.fd, &ev);
 				}
 			}
@@ -156,7 +146,6 @@ void *t_worker(void *t_data)
 	}
 
 	close(serv_fd);
-
 	return 0;
 }
 
@@ -178,9 +167,8 @@ int main(void)
 	log_level(0, "info");
 	logger(LOG_INFO, "starting shitty little server with %d threads", num_threads);
 
-	for(t=0; t < num_threads; t++) {
-		rc = pthread_create(&threads[t], NULL, t_worker, (void *)t);
-		if (rc)
+	for (t=0; t < num_threads; t++) {
+		if ((rc = pthread_create(&threads[t], NULL, t_worker, (void *)t)))
 			_ERROR("failed to create worker thread");
 	}
 
@@ -205,12 +193,10 @@ int main(void)
 	if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
 		_ERROR("sigprocmask");
 
-	sfd = signalfd(-1, &mask, O_NONBLOCK);
-	if (sfd == -1)
+	if ((sfd = signalfd(-1, &mask, O_NONBLOCK)) == -1)
 		_ERROR("signalfd");
 
-	epollfd = epoll_create1(0);
-	if (epollfd == -1)
+	if ((epollfd = epoll_create1(0)) == -1)
 		_ERROR("epoll_create1");
 
 	ev.events = EPOLLIN | EPOLLET;
@@ -219,8 +205,7 @@ int main(void)
 		_ERROR("epoll_ctl sfd");
 
 	for (;;) {
-		nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
-		if (nfds == -1)
+		if ((nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1)) == -1)
 			_ERROR("epoll_wait");
 
 		for (n = 0; n < nfds; ++n) {
