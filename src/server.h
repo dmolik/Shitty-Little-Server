@@ -41,19 +41,37 @@
 
 #include <pthread.h>
 
+#include <http_parser.h>
+
 #include "logger.h"
-#include "../config.h"
+#include "config.h"
 
 #define MAX_EVENTS 8192
 #define MAXMSG     1492
 
-#define SERVER_NAME "shitty little server"
+#define SERVER_NAME PACKAGE
 
 #define _ERROR(msg) \
 	do { logger(LOG_ERR, "%s, %s", msg, strerror(errno)); exit(EXIT_FAILURE); } while (0)
 
-#define PORT   3000
+#define DEFAULT_PORT   3000
 
+typedef struct {
+	char *facility;
+	char *level;
+	char *console;
+} log_t;
+
+typedef struct {
+	uint16_t  port;
+	uint8_t   workers;
+	uint8_t   daemonize;
+	char     *uid;
+	char     *gid;
+	char     *pidpath;
+	char     *confpath;
+	log_t    *log;
+} server_t;
 
 const char * time_s(void);
 

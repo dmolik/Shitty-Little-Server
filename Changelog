@@ -1,0 +1,5 @@
+
+0.0.1 - 20151031 - the Holloween release
+
+Proof of concept pre-release, SO_REUSEPORT, threads and a simple message
+the server works but lacks any real features other than it works.

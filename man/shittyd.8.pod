@@ -1,6 +1,6 @@
 =head1 NAME
 
-shittyd - The shitty webserver daemon
+shittyd - The shitty little webserver daemon
 
 =head1 SYNOPSIS
 

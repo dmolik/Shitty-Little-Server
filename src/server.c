@@ -28,9 +28,8 @@ const char * time_s(void)
 	struct tm *tmp;
 
 	t = time(NULL);
-	tmp = gmtime(&t);
-	if (tmp == NULL)
-		logger(LOG_ERR, "failed to allocate gmtime: %s", strerror(errno));
+	if ((tmp = gmtime(&t)) == NULL)
+		_ERROR("failed to allocate gmtime");
 
 	if (strftime(rs_t, sizeof(rs_t), "%a, %d %b %Y %T GMT", tmp) == 0)
 		logger(LOG_ERR, "unable to format time, %s", strerror(errno));
@@ -95,7 +94,7 @@ void *t_worker(void *t_data)
 
 	memset(&serv_addr, 0, sizeof(struct sockaddr_in));
 	serv_addr.sin_family      = AF_INET;
-	serv_addr.sin_port        = htons(PORT);
+	serv_addr.sin_port        = htons(DEFAULT_PORT);
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	int serv_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -178,10 +177,10 @@ int main(int argc, char **argv)
 		switch (c) {
 		case 'h':
 		case '?':
-			printf("%s v%s\n", argv[0], VERSION);
+			printf("%s v%s\n", PACKAGE, VERSION);
 			printf("Usage: %s [-h?Fv] [-c /path/to/config]\n"
 			       "          [-u user] [-g group] [-p /path/to/pidfile\n\n",
-			        argv[0]);
+			        PACKAGE);
 
 			printf("Option:\n");
 			printf("  -?, -h, --help    show this help screen\n");
@@ -192,7 +191,10 @@ int main(int argc, char **argv)
 
 			printf("  -p, --pidfile     where to store the pidfile\n");
 			printf("  -u, --user        the user to run as\n");
-			printf("  -g, --group       the group to run under\n");
+			printf("  -g, --group       the group to run under\n\n");
+
+			printf("See also: \n  %s\n", PACKAGE_URL);
+
 			exit(EXIT_SUCCESS);
 
 		case 'v':
@@ -272,7 +274,7 @@ int main(int argc, char **argv)
 			if (events[n].data.fd == sfd) {
 				s = read(sfd, &fdsi, sizeof(struct signalfd_siginfo));
 				if (s != sizeof(struct signalfd_siginfo))
-					_ERROR("epoll read");
+					_ERROR("epoll read, main loop");
 				if (fdsi.ssi_signo == SIGINT) {
 					term_handler();
 				} else if (fdsi.ssi_signo == SIGHUP) {
