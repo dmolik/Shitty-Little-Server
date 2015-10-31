@@ -19,7 +19,7 @@
 
 1. Linux - early decision to not be portable
 2. Kernel 3.9 or later
-3. autotools - won't be necerrary with later releases
+3. zlib, pthreads, and joyent http-parser
 
 ### Commands
 
