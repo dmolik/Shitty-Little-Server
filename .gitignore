@@ -1,6 +1,8 @@
 autom4te.cache/
 aclocal.m4
 shittyd
+shittyd-*.tar.bz2
+shittyd-*.tar.gz
 src/shittyd
 config.h*
 config.log
