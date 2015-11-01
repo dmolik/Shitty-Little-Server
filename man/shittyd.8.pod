@@ -45,7 +45,7 @@ root:root. Please be aware that if you want to run B<shittyd> on a port less tha
 
 =head1 SEE ALSO
 
-B<shittdy.conf>(5)
+B<shittyd.conf>(5)
 
 =head1 AUTHOR
 

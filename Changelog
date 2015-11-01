@@ -1,4 +1,8 @@
 
+0.1.0 - 20151103 - Config file
+
+Config file support has been added and mostly documentated.
+
 0.0.1 - 20151031 - the Holloween release
 
 Proof of concept pre-release, SO_REUSEPORT, threads and a simple message

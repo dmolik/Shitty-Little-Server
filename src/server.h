@@ -51,27 +51,36 @@
 
 #define SERVER_NAME PACKAGE
 
+
 #define _ERROR(msg) \
 	do { logger(LOG_ERR, "%s, %s", msg, strerror(errno)); exit(EXIT_FAILURE); } while (0)
 
-#define DEFAULT_PORT   3000
+#define DEFAULT_PORT          3000
+#define DEFAULT_CONF_FILE    "/etc/shittd.conf"
+#define DEFAULT_PID_FILE     "/run/shittyd.pid"
+#define DEFAULT_LOG_TYPE     "syslog"
+#define DEFAULT_LOG_LEVEL    "info"
+#define DEFAULT_LOG_FACILITY "daemon"
 
 typedef struct {
 	char *facility;
 	char *level;
-	char *console;
+	char *type;
 } log_t;
 
-typedef struct {
+struct conf_t {
 	uint16_t  port;
 	uint8_t   workers;
 	uint8_t   daemonize;
+	uint8_t   verbose;
+	uint8_t   console;
 	char     *uid;
 	char     *gid;
-	char     *pidpath;
-	char     *confpath;
-	log_t    *log;
-} server_t;
+	char     *pid;
+	char     *conf;
+	log_t     log;
+};
+typedef struct conf_t conf_t;
 
 const char * time_s(void);
 

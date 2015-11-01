@@ -1,0 +1,48 @@
+=head1 NAME
+
+shittyd.conf - Shitty configuration file
+
+=head1 SYNOPSIS
+
+B</etc/shittyd.conf>
+
+=head1 DESCRIPTION
+
+B<shittyd>(8) reads its default configuration file from I</etc/shittyd.conf>
+unless a seperate path is supplied on the command line.
+
+Comments start with a '#' and continue to the end of the line. And, blank
+lines are ignored.
+
+=head1 CONFIGURATION OPTIONS
+
+=over
+
+=item B<port> 3000
+
+=item B<workers> # detected cores
+
+=item B<pidfile> /run/shittyd.pid
+
+=item B<user> current user
+
+=item B<group> current group
+
+=item B<log section>
+
+example:
+  log {
+    type     syslog
+    level    info
+    facility daemon
+  }
+
+=back
+
+=head1 SEE ALSO
+
+B<shittyd>(8)
+
+=head1 AUTHOR
+
+shittyd was concieved and written by Dan Molik

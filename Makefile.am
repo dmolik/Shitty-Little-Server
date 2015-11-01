@@ -24,12 +24,24 @@ ACLOCAL_AMFLAGS = -I build
 AM_CFLAGS = -Wall -g $(DEPS_CFLAGS)
 
 core_headers :=
+core_headers += src/config/config_file.h
 core_headers += src/logger.h
 core_headers += src/server.h
 
 core_src :=
+core_src += src/config/parse.y
+core_src += src/config/scanner.l
 core_src += src/logger.c
 core_src += src/server.c
+
+AM_LFLAGS = --header-file --yylineno
+AM_YFLAGS = -d
+
+src/scanner.c: src/config/scanner.l src/server.h src/config/config_file.h
+	$(LEXCOMPILE) --outfile=$@ $<
+
+src/parse.c: src/config/parse.y src/server.h src/config/config_file.h
+	$(YACCCOMPILE) --output-file=$@ $<
 
 shittyd_SOURCES = $(core_headers) $(core_src)
 sbin_PROGRAMS   = shittyd

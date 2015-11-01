@@ -19,7 +19,10 @@
 
 
 #include "server.h"
+#include "config/config_file.h"
+#include "config/parse.h"
 
+conf_t server_c;
 
 const char * time_s(void)
 {
@@ -94,7 +97,7 @@ void *t_worker(void *t_data)
 
 	memset(&serv_addr, 0, sizeof(struct sockaddr_in));
 	serv_addr.sin_family      = AF_INET;
-	serv_addr.sin_port        = htons(DEFAULT_PORT);
+	serv_addr.sin_port        = htons(server_c.port);
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	int serv_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -158,6 +161,15 @@ int main(int argc, char **argv)
 {
 	int rc;
 	long t;
+	server_c.conf         = DEFAULT_CONF_FILE;
+	server_c.port         = DEFAULT_PORT;
+	server_c.pid          = DEFAULT_PID_FILE;
+	server_c.workers      = (int) sysconf(_SC_NPROCESSORS_ONLN);
+	server_c.verbose      = 0;
+	server_c.console      = 0;
+	server_c.log.type     = DEFAULT_LOG_TYPE;
+	server_c.log.level    = DEFAULT_LOG_LEVEL;
+	server_c.log.facility = DEFAULT_LOG_FACILITY;
 
 	struct option long_opts[] = {
 		{ "help",             no_argument, NULL, 'h' },
@@ -198,22 +210,27 @@ int main(int argc, char **argv)
 			exit(EXIT_SUCCESS);
 
 		case 'v':
-			// verbose++
+			server_c.verbose++;
 			break;
 
 		case 'F':
+			server_c.console = 1;
 			break;
 
 		case 'c':
+			server_c.conf = strdup(optarg);
 			break;
 
 		case 'p':
+			server_c.pid = strdup(optarg);
 			break;
 
 		case 'u':
+			server_c.uid = strdup(optarg);
 			break;
 
 		case 'g':
+			server_c.gid = strdup(optarg);
 			break;
 
 		default:
@@ -222,14 +239,16 @@ int main(int argc, char **argv)
 		}
 	}
 
-	int num_threads = (int) sysconf(_SC_NPROCESSORS_ONLN);
-	pthread_t threads[num_threads];
+	if ((parse_config_file(&server_c, server_c.conf)) == -1)
+		_ERROR("error parsing config file");
 
-	log_open(argv[0], "daemon");
-	log_level(0, "info");
-	logger(LOG_INFO, "starting shitty little server with %d threads", num_threads);
+	pthread_t threads[server_c.workers];
 
-	for (t=0; t < num_threads; t++) {
+	log_open(PACKAGE, server_c.log.facility);
+	log_level(0, server_c.log.level);
+	logger(LOG_INFO, "starting shitty little server with %d threads", server_c.workers);
+
+	for (t=0; t < server_c.workers; t++) {
 		if ((rc = pthread_create(&threads[t], NULL, t_worker, (void *)t)))
 			_ERROR("failed to create worker thread");
 	}

@@ -2,6 +2,7 @@ autom4te.cache/
 aclocal.m4
 shittyd
 shittyd-*.tar.*
+.deps/
 
 config.h*
 config.log
@@ -9,9 +10,14 @@ config.status
 configure
 
 src/*.o
+src/config/*.o
 src/.deps
 src/.dirstamp
 src/shittyd
+src/config/.dirstamp
+src/config/parse.c
+src/config/parse.h
+src/config/scanner.c
 
 man/*.1
 man/*.2
