@@ -22,7 +22,8 @@
 
 ### Commands
 
-	./bootstrap
+After downloading the latest release and unpacking it, perform the following:
+
 	./configure
 	make
 	make install
