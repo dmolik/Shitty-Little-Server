@@ -7,7 +7,7 @@
 #include "config_file.h"
 #include "../server.h"
 
-static conf_t *p_config;
+conf_t *p_config;
 
 int  yylex(void);
 void yyerror(char *str, ...);
@@ -93,8 +93,8 @@ int parse_config_file (conf_t *config_ref, const char *path)
 	//
 	extern FILE *yyin;
 	extern int yylineno;
-	conf_t *p_config = malloc(sizeof(conf_t));
 
+	p_config = malloc(sizeof(conf_t));
 	p_config = config_ref;
 
 	yyin = fopen (path, "r");

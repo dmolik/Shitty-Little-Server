@@ -246,7 +246,8 @@ int main(int argc, char **argv)
 
 	log_open(PACKAGE, server_c.log.facility);
 	log_level(0, server_c.log.level);
-	logger(LOG_INFO, "starting shitty little server with %d threads", server_c.workers);
+	logger(LOG_INFO, "starting %s with %d threads, on port %d",
+		PACKAGE, server_c.workers, server_c.port);
 
 	for (t=0; t < server_c.workers; t++) {
 		if ((rc = pthread_create(&threads[t], NULL, t_worker, (void *)t)))

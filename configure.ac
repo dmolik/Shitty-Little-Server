@@ -19,7 +19,7 @@
 
 
 AC_PREREQ(2.63)
-AC_INIT([shittyd], [0.1.0], [bugs@danmolik.com], , [https://github.com/GrayTShirt/Shitty-Little-Server/])
+AC_INIT([shittyd], [0.1.1], [bugs@danmolik.com], , [https://github.com/GrayTShirt/Shitty-Little-Server/])
 
 AC_CONFIG_SRCDIR([src/server.h])
 AC_CONFIG_AUX_DIR([build])
