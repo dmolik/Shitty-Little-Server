@@ -33,6 +33,8 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
+#include <sys/stat.h>
+
 #include <getopt.h>
 #include <signal.h>
 #include <sys/signalfd.h>
@@ -44,6 +46,7 @@
 #include <http_parser.h>
 
 #include "logger.h"
+#include "daemonize.h"
 #include "config.h"
 
 #define MAX_EVENTS 8192
@@ -58,6 +61,7 @@
 #define DEFAULT_PORT          3000
 #define DEFAULT_CONF_FILE    "/etc/shittd.conf"
 #define DEFAULT_PID_FILE     "/run/shittyd.pid"
+#define DEFAULT_USER         "root"
 #define DEFAULT_LOG_TYPE     "syslog"
 #define DEFAULT_LOG_LEVEL    "info"
 #define DEFAULT_LOG_FACILITY "daemon"
@@ -73,7 +77,6 @@ struct conf_t {
 	uint8_t   workers;
 	uint8_t   daemonize;
 	uint8_t   verbose;
-	uint8_t   console;
 	char     *uid;
 	char     *gid;
 	char     *pid;

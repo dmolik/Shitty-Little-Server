@@ -26,12 +26,14 @@ AM_CFLAGS = -Wall -g $(DEPS_CFLAGS)
 core_headers :=
 core_headers += src/config/config_file.h
 core_headers += src/logger.h
+core_headers += src/daemonize.h
 core_headers += src/server.h
 
 core_src :=
 core_src += src/config/parse.y
 core_src += src/config/scanner.l
 core_src += src/logger.c
+core_src += src/daemonize.c
 core_src += src/server.c
 
 AM_LFLAGS = --header-file --yylineno

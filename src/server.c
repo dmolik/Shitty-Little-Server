@@ -20,7 +20,7 @@
 
 #include "server.h"
 #include "config/config_file.h"
-#include "config/parse.h"
+
 
 conf_t server_c;
 
@@ -166,7 +166,9 @@ int main(int argc, char **argv)
 	server_c.pid          = DEFAULT_PID_FILE;
 	server_c.workers      = (int) sysconf(_SC_NPROCESSORS_ONLN);
 	server_c.verbose      = 0;
-	server_c.console      = 0;
+	server_c.daemonize    = 1;
+	server_c.uid          = DEFAULT_USER;
+	server_c.gid          = DEFAULT_USER;
 	server_c.log.type     = DEFAULT_LOG_TYPE;
 	server_c.log.level    = DEFAULT_LOG_LEVEL;
 	server_c.log.facility = DEFAULT_LOG_FACILITY;
@@ -214,7 +216,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'F':
-			server_c.console = 1;
+			server_c.daemonize = 0;
 			break;
 
 		case 'c':
@@ -238,16 +240,36 @@ int main(int argc, char **argv)
 			return 1;
 		}
 	}
+	if (access(server_c.conf, F_OK) != -1) {
+		if ((parse_config_file(&server_c, server_c.conf)) == -1) {
+			fprintf(stderr, "error parsing config file (%s), %s\n", server_c.conf, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+	} else if (strcmp(server_c.conf, DEFAULT_CONF_FILE) != 0) {
+			fprintf(stderr, "config file (%s) does not exist\n", server_c.conf);
+			exit(EXIT_FAILURE);
+	}
 
-	if ((parse_config_file(&server_c, server_c.conf)) == -1)
-		_ERROR("error parsing config file");
+	if (server_c.daemonize) {
+		log_open(PACKAGE, server_c.log.facility);
+		log_level(LOG_ERR + server_c.verbose, NULL);
+
+		mode_t um = umask(0);
+		if (daemonize(server_c.pid, server_c.uid, server_c.gid) != 0) {
+			fprintf(stderr, "daemonization failed: (%i) %s\n", errno, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		umask(um);
+	} else {
+		log_open(PACKAGE, "console");
+		log_level(LOG_ERR + server_c.verbose, NULL);
+		if (!freopen("/dev/null", "r", stdin))
+			logger(LOG_WARNING, "failed to reopen stdin </dev/null: %s", strerror(errno));
+	}
+	logger(LOG_NOTICE, "starting %s with %d threads, on port %d",
+		PACKAGE, server_c.workers, server_c.port);
 
 	pthread_t threads[server_c.workers];
-
-	log_open(PACKAGE, server_c.log.facility);
-	log_level(0, server_c.log.level);
-	logger(LOG_INFO, "starting %s with %d threads, on port %d",
-		PACKAGE, server_c.workers, server_c.port);
 
 	for (t=0; t < server_c.workers; t++) {
 		if ((rc = pthread_create(&threads[t], NULL, t_worker, (void *)t)))

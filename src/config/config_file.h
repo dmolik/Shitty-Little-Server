@@ -3,6 +3,6 @@
 
 #include "../server.h"
 
-int parse_config_file (conf_t *, const char *);
+int parse_config_file (conf_t *config_ref, const char *path);
 
 #endif
