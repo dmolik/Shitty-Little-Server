@@ -60,11 +60,75 @@ void s_content(int fd, char *msg)
 		logger(LOG_ERR, "failed to send msg, %s", strerror(errno));
 }
 
-int peer_helper(int fd, long tid)
+int uri_cb(http_parser *p, const char *url, size_t len)
+{
+	char *url_p = malloc(len + 1);
+	bzero(url_p, len + 1);
+	strncpy(url_p, url, len);
+	logger(LOG_NOTICE, "url: %s", url_p);
+	free(url_p);
+
+	return 0;
+}
+
+int message_begin_cb(http_parser *p)
+{
+	logger(LOG_NOTICE, "message recieved");
+	return 0;
+}
+int message_complete_cb(http_parser *p)
+{
+	logger(LOG_NOTICE, "message complete");
+	return 0;
+}
+int headers_complete_cb(http_parser *p)
+{
+	logger(LOG_NOTICE, "headers complete");
+	return 0;
+}
+int header_field_cb(http_parser *p,  const char *h, size_t len)
+{
+	char *field = malloc(len + 1);
+	bzero(field, len + 1);
+	strncpy(field, h, len);
+	logger(LOG_NOTICE, "header field: %s", field);
+	free(field);
+	return 0;
+}
+int header_value_cb(http_parser *p,  const char *hv, size_t len)
+{
+	char *field = malloc(len + 1);
+	bzero(field, len + 1);
+	strncpy(field, hv, len);
+	logger(LOG_NOTICE, "header value: %s", field);
+	free(field);
+	return 0;
+}
+int body_cb(http_parser *p,  const char *body, size_t len)
+{
+	char *field = malloc(len + 1);
+	bzero(field, len + 1);
+	strncpy(field, body, len);
+	logger(LOG_NOTICE, "message body: %s", field);
+	free(field);
+	return 0;
+}
+
+static struct http_parser_settings settings = {
+	.on_message_begin    = message_begin_cb,
+	.on_message_complete = message_complete_cb,
+	.on_headers_complete = headers_complete_cb,
+	.on_header_field     = header_field_cb,
+	.on_header_value     = header_value_cb,
+	.on_url              = uri_cb,
+	.on_body             = body_cb
+};
+
+int peer_helper(int fd, long tid, http_parser *parser)
 {
 	char buffer[MAXMSG];
 	bzero(buffer, MAXMSG);
-	int nbytes = recv(fd, buffer, MAXMSG, 0);
+	int nbytes  = recv(fd, buffer, MAXMSG, 0);
 	if (nbytes < 0) {
 		logger(LOG_ERR, "error reading socket: %s", strerror(errno));
 		exit (EXIT_FAILURE);
@@ -72,7 +136,8 @@ int peer_helper(int fd, long tid)
 		/* End-of-file. */
 		return -1;
 	} else {
-		/* Data read. */
+		if (http_parser_execute(parser, &settings, buffer, nbytes) != nbytes)
+			logger(LOG_ERR, "failed to fully parse request");
 		s_content(fd, "<!DOCTYPE html>"
 			"<html lang=\"en\">"
 			"<head>"
@@ -118,6 +183,12 @@ void *t_worker(void *t_data)
 	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serv_fd, &ev) == -1)
 		_ERROR("failed to add listening socket to fd loop");
 
+	http_parser *parser = malloc(sizeof(http_parser));
+	if (parser == NULL)
+		_ERROR("Could not allocate parser");
+
+	http_parser_init(parser, HTTP_REQUEST);
+
 	for (;;) {
 		if ((nfds = epoll_wait(epollfd, events, SOMAXCONN, -1)) == -1)
 			_ERROR("catastropic epoll_wait");
@@ -137,7 +208,7 @@ void *t_worker(void *t_data)
 						_ERROR("epoll_ctl on peer_fd");
 
 				} else {
-					if (!peer_helper(events[n].data.fd, tid))
+					if (!peer_helper(events[n].data.fd, tid, parser))
 						close(events[n].data.fd);
 
 					epoll_ctl(epollfd, EPOLL_CTL_DEL, events[n].data.fd, &ev);
@@ -291,9 +362,6 @@ int main(int argc, char **argv)
 	sigaddset(&mask, SIGQUIT);
 	sigaddset(&mask, SIGHUP);
 
-	/* Block signals so that they aren't handled
-	 * according to their default dispositions */
-
 	if (sigprocmask(SIG_BLOCK, &mask, NULL) == -1)
 		_ERROR("sigprocmask");
 
@@ -318,11 +386,11 @@ int main(int argc, char **argv)
 				if (s != sizeof(struct signalfd_siginfo))
 					_ERROR("epoll read, main loop");
 				if (fdsi.ssi_signo == SIGINT) {
-					term_handler();
+					logger(LOG_NOTICE, "recieved sigint, someone is watching");
 				} else if (fdsi.ssi_signo == SIGHUP) {
-					printf("HUPPED\n");
+					logger(LOG_NOTICE, "recieved sighup, refreshing configs");
 				} else if (fdsi.ssi_signo == SIGQUIT) {
-					printf("Got SIGQUIT\n");
+					logger(LOG_NOTICE, "recieved sigquit, shutting down");
 					term_handler();
 				} else {
 					printf("Read unexpected signal\n");

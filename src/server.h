@@ -89,6 +89,6 @@ const char * time_s(void);
 
 void s_content(int fd, char *msg);
 
-int peer_helper(int fd, long tid);
+int peer_helper(int fd, long tid, http_parser *parser);
 
 #endif
